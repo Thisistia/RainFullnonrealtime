@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>RainFull</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://d3js.org/d3.v3.js"></script>
+    <script src="topojson.min.js"></script>
+    <style>
+        .map-boundary {
+            stroke: #eee;
+        }
+
+        #tooltip {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            width: 200px;
+            height: 120px;
+            padding: 10px 10px;
+            border-radius: 5px;
+            box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        span {
+            margin: 5px;
+            padding: 0px;
+            font-family: Microsoft JhengHei;
+        }
+
+        table {
+            margin: 3px;
+            border-collapse: collapse;
+            border-style: solid;
+            text-align: center;
+        }
+
+        .RainfullTime {
+            text-align: center;
+            font-size: 1px;
+            border-style: solid;
+            width: 15px;
+            height: 15px;
+        }
+
+        #Rainfall10min,
+        #Rainfall1hr,
+        #Rainfall3hr,
+        #Rainfall24hr {
+            border-left-style: solid;
+            border-top-style: solid;
+            font-size: 20px;
+            width: 30px;
+            height: 30px;
+        }
+
+        #PublishTime,
+        #County,
+        #Township {
+            font-size: 12px;
+        }
+
+        #tooltip.hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <svg width="2800" height="3000"></svg>
+    <div id="tooltip" class="hidden">
+        <span><strong id="SiteId"></strong></span>
+        <span><strong id="SiteName"></strong></span><br>
+        <table>
+            <tr>
+                <td colspan="2" rowspan="2" id="Rainfall10min" class="rainfull"></td>
+                <td rowspan="2"></td>
+                <td colspan="2" rowspan="2" id="Rainfall1hr" class="rainfull"></td>
+                <td rowspan="2"></td>
+                <td colspan="2" rowspan="2" id="Rainfall3hr" class="rainfull"></td>
+                <td rowspan="2"></td>
+                <td colspan="2" rowspan="2" id="Rainfall24hr" class="rainfull"></td>
+                <td rowspan="2"></td>
+            </tr>
+            <tr>
+
+            </tr>
+            <tr>
+                <td colspan="2"></td>
+                <td class="RainfullTime">10</td>
+                <td colspan="2"></td>
+                <td class="RainfullTime">1</td>
+                <td colspan="2"></td>
+                <td class="RainfullTime">3</td>
+                <td colspan="2"></td>
+                <td class="RainfullTime">24</td>
+            </tr>
+
+        </table>
+        <span><strong id="County"></strong></span>
+        <span><strong id="Township"></strong><br></span>
+        <span><strong id="PublishTime"></strong></span>
+
+    </div>
+
+    <script>
+        //為了可以獲取到projection的資料
+        var projection;
+        //1.地理資料檔: GeoJSON or TopoJSON
+        d3.json("ten.json", function(DataSet) {
+            d3.json("tw-map-topo.json", function(mapDataSet) {
+                //先觀察一下檔案
+                //                    console.log(DataSet);
+
+                bind(mapDataSet, DataSet);
+                render();
+
+            });
+        });
+
+        function render() {
+            //從這裡開始修改
+            var fScale = d3.scale.category20();
+            var tmp_color;
+            d3.selectAll("path").attr({
+                fill: "rgba(0, 0, 0, 0.9)"
+            })
+
+            d3.selectAll("circle").attr({
+                    "cx": function(d) {
+                        return projection([+d["TWD67Lon"], +d["TWD67Lat"]])[0]
+                    },
+                    "cy": function(d) {
+                        return projection([+d["TWD67Lon"], +d["TWD67Lat"]])[1]
+                    },
+                    r: 5,
+                    fill: function(d) {
+                        if (d.Rainfall1hr > 40 || d.Rainfall24hr > 80) {
+                            return "rgba(255, 243, 94, 0.5)";
+                        } else if (d.Rainfall3hr > 100 || d.Rainfall24hr > 200) {
+                            return "rgba(255, 147, 0, 0.5)";
+                        } else if (d.Rainfall24hr > 350) {
+                            return "rgba(255, 39, 0, 0.5)";
+                        } else if (d.Rainfall24hr > 500) {
+                            return "rgba(255, 0, 255, 0.5)";
+                        } else {
+                            return "rgba(10, 255, 0, 0.5)";
+                        }
+                    }
+
+                })
+                .on("mouseover", function(d) {
+                    var xPox = d3.select(this).attr("cx");
+                    var yPox = d3.select(this).attr("cy")
+                    var tooltip = d3.select("#tooltip").style({
+                        left: (+xPox + 20) + "px",
+                        top: (+yPox + 20) + "px"
+                    });
+                    d3.select("#tooltip #SiteId").text(d.SiteId);
+                    d3.select("#tooltip #SiteName").text(d.SiteName);
+                    d3.select("#tooltip #County").text("測站位置：" + d.County);
+                    d3.select("#tooltip #Township").text(d.Township);
+                    d3.select("#tooltip #Rainfall10min").text(d.Rainfall10min);
+                    d3.select("#tooltip #Rainfall1hr").text(d.Rainfall1hr);
+                    d3.select("#tooltip #Rainfall3hr").text(d.Rainfall3hr);
+                    d3.select("#tooltip #Rainfall24hr").text(d.Rainfall24hr);
+                    d3.select("#tooltip #PublishTime").text("Publish：" + d.PublishTime);
+                    d3.select("#tooltip").classed("hidden", false);
+                    d3.select(this).attr({
+                        fill: "gold"
+                    });
+
+                })
+                .on("mouseout", function(d) {
+                    d3.select("#tooltip").classed("hidden", true);
+                    d3.select(this).attr({
+                        fill: function(d) {
+                            if (d.Rainfall1hr > 40 || d.Rainfall24hr > 80) {
+                                return "rgba(255, 243, 94, 0.5)";
+                            } else if (d.Rainfall3hr > 100 || d.Rainfall24hr > 200) {
+                                return "rgba(255, 147, 0, 0.5)";
+                            } else if (d.Rainfall24hr > 350) {
+                                return "rgba(255, 39, 0, 0.5)";
+                            } else if (d.Rainfall24hr > 500) {
+                                return "rgba(255, 0, 255, 0.5)";
+                            } else {
+                                return "rgba(10, 255, 0, 0.5)";
+                            }
+                        }
+                    })
+                });
+        }
+
+        function bind(topoRoot, DataSet) {
+            //            console.log(DataSet);
+            // 2.地理投影器: 設定投影方式(麥卡托)、定位點([經度,緯度])、縮放(scale)
+            projection = d3.geo.mercator().center([119.5, 25.1]).scale(45000);
+
+            // 3.路徑產生器: d3.geo.path()
+            var path = d3.geo.path().projection(projection);
+
+            // 4.地理資料檔: 使用topojson.js載入地理資料
+            var geoRoot = topojson.feature(topoRoot, topoRoot.objects["COUNTY_MOI_1060525"]);
+            //            console.log(geoRoot)
+
+            //             綁定path與載入的地理資料(features:每一地理區劃)
+            var selection = d3.select("svg").selectAll("path").data(geoRoot.features);
+            selection.enter().append("path").classed("map-boundary", true).attr("d", path);
+            selection.exit().remove();
+
+
+            var selection_c = d3.select("svg").selectAll("circle").data(DataSet);
+            selection_c.enter().append("circle");
+            selection_c.exit().remove();
+        }
+    </script>
+
+</body>
+
+</html>
